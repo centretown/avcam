@@ -1,4 +1,4 @@
-module avcam
+module github.com/centretown/avcam
 
 go 1.23.4
 
