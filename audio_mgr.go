@@ -10,28 +10,28 @@ import (
 	"github.com/gordonklaus/portaudio"
 )
 
-type AudioMgr struct {
+type avcamMgr struct {
 	Current     *portaudio.DeviceInfo
 	Enabled     bool
 	isStreaming bool
 }
 
-func NewAudio() (au *AudioMgr) {
-	au = &AudioMgr{}
+func Newavcam() (au *avcamMgr) {
+	au = &avcamMgr{}
 	err := portaudio.Initialize()
 	if err != nil {
-		log.Println("Initialize AudioMgr", err)
+		log.Println("Initialize avcamMgr", err)
 	} else {
 		au.Current, _ = portaudio.DefaultInputDevice()
 	}
 	return
 }
 
-func (au *AudioMgr) IsStreaming() bool {
+func (au *avcamMgr) IsStreaming() bool {
 	return au.isStreaming
 }
 
-func (au *AudioMgr) CurrentDevice() (device *portaudio.DeviceInfo, err error) {
+func (au *avcamMgr) CurrentDevice() (device *portaudio.DeviceInfo, err error) {
 	device, err = portaudio.DefaultInputDevice()
 	return
 }
@@ -44,7 +44,7 @@ const (
 	FindCase
 )
 
-func (au *AudioMgr) findDevices(search string) (result []*portaudio.DeviceInfo) {
+func (au *avcamMgr) findDevices(search string) (result []*portaudio.DeviceInfo) {
 	result = make([]*portaudio.DeviceInfo, 0)
 	hostApis, err := portaudio.HostApis()
 	if err != nil {
@@ -60,7 +60,7 @@ func (au *AudioMgr) findDevices(search string) (result []*portaudio.DeviceInfo) 
 	}
 	return
 }
-func (au *AudioMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
+func (au *avcamMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
 	list = make([]*portaudio.DeviceInfo, 0)
 	hostApis, err := portaudio.HostApis()
 	if err != nil {
@@ -72,7 +72,7 @@ func (au *AudioMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
 	return
 }
 
-func (au *AudioMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInfo) {
+func (au *avcamMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInfo) {
 	if len(searches) < 1 {
 		list = au.ListAllDevices()
 		return
@@ -89,7 +89,7 @@ func (au *AudioMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInf
 	return
 }
 
-func (au *AudioMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err error) {
+func (au *avcamMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err error) {
 	search = strings.ToLower(search)
 	var (
 		hostApis []*portaudio.HostApiInfo
@@ -112,16 +112,16 @@ func (au *AudioMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err
 	return
 }
 
-var _ AudioSource = (*AudioMgr)(nil)
+var _ avcamSource = (*avcamMgr)(nil)
 
-func (au *AudioMgr) IsEnabled() bool { return au.Enabled }
+func (au *avcamMgr) IsEnabled() bool { return au.Enabled }
 
-func (au *AudioMgr) Record(stop chan int) {
+func (au *avcamMgr) Record(stop chan int) {
 	fname, _ := NextFileName(OutputBase, "aiff")
 	au.RecordX(au.Current, fname, stop)
 }
 
-func (au *AudioMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop chan int) {
+func (au *avcamMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop chan int) {
 	log.Println("RecordX")
 	var (
 		file   *os.File
@@ -156,6 +156,7 @@ func (au *AudioMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop 
 	sampleCount := 0
 	defer func() {
 		finalizeAIFF(file, sampleCount)
+		file.Close()
 	}()
 
 	inbuf := make([]int32, 64)
@@ -215,7 +216,7 @@ func (au *AudioMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop 
 	}
 
 }
-func (au *AudioMgr) Stream(param portaudio.StreamParameters, out chan []int32, stop chan int) {
+func (au *avcamMgr) Stream(param portaudio.StreamParameters, out chan []int32, stop chan int) {
 	var (
 		stream      *portaudio.Stream
 		inbuf       = make([]int32, param.FramesPerBuffer)

@@ -61,7 +61,7 @@ func TestEnumerate(t *testing.T) {
 }
 
 func TestRecord(t *testing.T) {
-	au := NewAudio()
+	au := Newavcam()
 	stop := make(chan int)
 	device, err := au.CurrentDevice()
 	if err != nil {
@@ -76,7 +76,7 @@ func TestRecord(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	au := NewAudio()
+	au := Newavcam()
 	lst := au.FindDevices("usb")
 	t.Log("USB DEVICES", len(lst))
 	for i, v := range lst {
@@ -90,8 +90,8 @@ func TestSearch(t *testing.T) {
 	}
 }
 
-func TestAudioFind(t *testing.T) {
-	au := NewAudio()
+func TestavcamFind(t *testing.T) {
+	au := Newavcam()
 	device, err := au.FindDevice("NexiGo N660")
 	if err != nil {
 		t.Fatal(err)

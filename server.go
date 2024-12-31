@@ -48,7 +48,7 @@ type Server struct {
 	Id        int
 	Config    *VideoConfig
 	Source    VideoSource
-	Audio     AudioSource
+	avcam     avcamSource
 	Recording bool
 	Busy      bool
 	indicator StreamListener
@@ -66,12 +66,12 @@ type Server struct {
 	captureStop   chan int
 	captureSource chan []byte
 
-	audioStop      chan int
-	audioRecording bool
+	avcamStop      chan int
+	avcamRecording bool
 }
 
 func NewVideoServer(id int, source VideoSource, config *VideoConfig,
-	audioSource AudioSource, indicator StreamListener) *Server {
+	avcamSource avcamSource, indicator StreamListener) *Server {
 
 	cam := &Server{
 		Source:        source,
@@ -84,8 +84,8 @@ func NewVideoServer(id int, source VideoSource, config *VideoConfig,
 		filters:       make([]Hook, 0),
 		captureStop:   make(chan int),
 		captureSource: make(chan []byte),
-		audioStop:     make(chan int),
-		Audio:         audioSource,
+		avcamStop:     make(chan int),
+		avcam:         avcamSource,
 	}
 
 	return cam
@@ -147,15 +147,15 @@ func (vs *Server) startRecording(duration int) {
 		return //?
 	}
 
-	if vs.Audio != nil {
-		if vs.Audio.IsEnabled() {
-			vs.audioRecording = true
-			go vs.Audio.Record(vs.audioStop)
+	if vs.avcam != nil {
+		if vs.avcam.IsEnabled() {
+			vs.avcamRecording = true
+			go vs.avcam.Record(vs.avcamStop)
 		} else {
-			log.Println("Audio Not Enabled")
+			log.Println("avcam Not Enabled")
 		}
 	} else {
-		log.Println("Audio Nil")
+		log.Println("avcam Nil")
 	}
 
 	vs.indicator.StreamOn(vs.Id)
@@ -178,9 +178,9 @@ func (vs *Server) stopRecording() {
 		return
 	}
 
-	if vs.audioRecording {
-		vs.audioStop <- 1
-		vs.audioRecording = false
+	if vs.avcamRecording {
+		vs.avcamStop <- 1
+		vs.avcamRecording = false
 	}
 
 	vs.captureStop <- 1

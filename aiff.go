@@ -2,8 +2,8 @@ package avcam
 
 import (
 	"encoding/binary"
+	"io"
 	"log"
-	"os"
 )
 
 const (
@@ -13,9 +13,9 @@ const (
 	BitsPerSample      int16 = 32
 )
 
-func InitAIFF(file *os.File, sampleRate float64, channelCount int16) (err error) {
+func InitAIFF(file io.Writer, sampleRate float64, channelCount int16) (err error) {
 	// form chunk
-	_, err = file.WriteString("FORM")
+	_, err = io.WriteString(file, "FORM")
 	if err != nil {
 		return
 	}
@@ -24,12 +24,13 @@ func InitAIFF(file *os.File, sampleRate float64, channelCount int16) (err error)
 		return
 	}
 
-	_, err = file.WriteString("AIFF")
+	_, err = io.WriteString(file, "AIFF")
+
 	if err != nil {
 		return
 	}
 	// common chunk
-	_, err = file.WriteString("COMM")
+	_, err = io.WriteString(file, "COMM")
 	if err != nil {
 		return
 	}
@@ -50,15 +51,15 @@ func InitAIFF(file *os.File, sampleRate float64, channelCount int16) (err error)
 		return
 	}
 
-	sr := uint16(sampleRate)
-	b := []byte{0x40, 0x0e, byte(sr >> 8), byte(sr & 0xff), 0, 0, 0, 0, 0, 0}
-	_, err = file.Write(b) //80-bit sample rate
+	rate := uint16(sampleRate)
+	buf := []byte{0x40, 0x0e, byte(rate >> 8), byte(rate & 0xff), 0, 0, 0, 0, 0, 0}
+	_, err = file.Write(buf) //80-bit sample rate
 	if err != nil {
 		return
 	}
 
 	// sound chunk
-	_, err = file.WriteString("SSND")
+	_, err = io.WriteString(file, "SSND")
 	if err != nil {
 		return
 	}
@@ -79,7 +80,7 @@ func InitAIFF(file *os.File, sampleRate float64, channelCount int16) (err error)
 	return
 }
 
-func finalizeAIFF(file *os.File, nSamples int) (err error) {
+func finalizeAIFF(file io.ReadWriteSeeker, nSamples int) (err error) {
 	log.Println("fill in missing sizes")
 	totalBytes := 4 + 8 + 18 + 8 + 8 + 4*nSamples
 	_, err = file.Seek(OffsetTotalBytes, 0)
@@ -90,7 +91,6 @@ func finalizeAIFF(file *os.File, nSamples int) (err error) {
 	if err != nil {
 		return
 	}
-
 	_, err = file.Seek(OffsetTotalSamples, 0)
 	if err != nil {
 		return
@@ -107,6 +107,5 @@ func finalizeAIFF(file *os.File, nSamples int) (err error) {
 	if err != nil {
 		return
 	}
-	err = file.Close()
 	return
 }

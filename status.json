@@ -1,6 +1,6 @@
 {
     "video_connections": 0,
-    "audio_connections": 0,
+    "avcam_connections": 0,
     "video_status": {
         "result": "status",
         "enabled": true,
@@ -19,13 +19,13 @@
             "circular": {},
             "modet": {}
         },
-        "audio_only": false,
+        "avcam_only": false,
         "mode": "none"
     },
     "curvals": {
         "orientation": "landscape",
         "idle": "off",
-        "audio_only": "off",
+        "avcam_only": "off",
         "overlay": "on",
         "quality": "49",
         "focus_homing": "off",
@@ -46,9 +46,9 @@
         "mirror_flip": "none",
         "ffc": "off",
         "rtsp_video_formats": "",
-        "rtsp_audio_formats": "",
+        "rtsp_avcam_formats": "",
         "video_connections": "0",
-        "audio_connections": "0",
+        "avcam_connections": "0",
         "ivideon_streaming": "off",
         "zoom": "100",
         "crop_x": "50",
@@ -82,7 +82,7 @@
             "on",
             "off"
         ],
-        "audio_only": [
+        "avcam_only": [
             "on",
             "off"
         ],
@@ -164,12 +164,12 @@
             "jpeg",
             "novideo"
         ],
-        "rtsp_audio_formats": [
+        "rtsp_avcam_formats": [
             "pcm",
             "alaw",
             "ulaw",
             "opus",
-            "noaudio"
+            "noavcam"
         ],
         "ivideon_streaming": [
             "on",
