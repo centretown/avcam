@@ -45,13 +45,13 @@ type StreamListener interface {
 }
 
 type Server struct {
-	Id        int
-	Config    *VideoConfig
-	Source    VideoSource
-	avcam     avcamSource
-	Recording bool
-	Busy      bool
-	indicator StreamListener
+	Id          int
+	Config      *VideoConfig
+	Source      VideoSource
+	audioSource AudioSource
+	Recording   bool
+	Busy        bool
+	listener    StreamListener
 
 	quit chan int
 	cmd  chan ServerCmd
@@ -66,26 +66,26 @@ type Server struct {
 	captureStop   chan int
 	captureSource chan []byte
 
-	avcamStop      chan int
+	audioStop      chan int
 	avcamRecording bool
 }
 
 func NewVideoServer(id int, source VideoSource, config *VideoConfig,
-	avcamSource avcamSource, indicator StreamListener) *Server {
+	audioSource AudioSource, listener StreamListener) *Server {
 
 	cam := &Server{
 		Source:        source,
 		Config:        config,
 		Id:            id,
-		indicator:     indicator,
+		listener:      listener,
 		quit:          make(chan int),
 		cmd:           make(chan ServerCmd),
 		streamHook:    NewStreamHook(),
 		filters:       make([]Hook, 0),
 		captureStop:   make(chan int),
 		captureSource: make(chan []byte),
-		avcamStop:     make(chan int),
-		avcam:         avcamSource,
+		audioStop:     make(chan int),
+		audioSource:   audioSource,
 	}
 
 	return cam
@@ -147,10 +147,10 @@ func (vs *Server) startRecording(duration int) {
 		return //?
 	}
 
-	if vs.avcam != nil {
-		if vs.avcam.IsEnabled() {
+	if vs.audioSource != nil {
+		if vs.audioSource.IsEnabled() {
 			vs.avcamRecording = true
-			go vs.avcam.Record(vs.avcamStop)
+			go vs.audioSource.Record(vs.audioStop)
 		} else {
 			log.Println("avcam Not Enabled")
 		}
@@ -158,7 +158,7 @@ func (vs *Server) startRecording(duration int) {
 		log.Println("avcam Nil")
 	}
 
-	vs.indicator.StreamOn(vs.Id)
+	vs.listener.StreamOn(vs.Id)
 	vs.Recording = true
 	vs.captureCount = 0
 	config := vs.Config
@@ -179,13 +179,13 @@ func (vs *Server) stopRecording() {
 	}
 
 	if vs.avcamRecording {
-		vs.avcamStop <- 1
+		vs.audioStop <- 1
 		vs.avcamRecording = false
 	}
 
 	vs.captureStop <- 1
 	vs.Recording = false
-	vs.indicator.StreamOff(vs.Id)
+	vs.listener.StreamOff(vs.Id)
 	log.Println("recorder closed")
 }
 

@@ -61,14 +61,20 @@ func TestEnumerate(t *testing.T) {
 }
 
 func TestRecord(t *testing.T) {
-	au := Newavcam()
+	au := NewAudioMgr()
 	stop := make(chan int)
 	device, err := au.CurrentDevice()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	go au.RecordX(device, "TestRecord_13.aiff", stop)
+	file, err := os.Create("TestRecord_13.aiff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	go au.RecordX(device, file, stop)
 	time.Sleep(10 * time.Second)
 	stop <- 1
 	// give go routine time to finalize
@@ -76,7 +82,7 @@ func TestRecord(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	au := Newavcam()
+	au := NewAudioMgr()
 	lst := au.FindDevices("usb")
 	t.Log("USB DEVICES", len(lst))
 	for i, v := range lst {
@@ -90,8 +96,8 @@ func TestSearch(t *testing.T) {
 	}
 }
 
-func TestavcamFind(t *testing.T) {
-	au := Newavcam()
+func TestAvcamFind(t *testing.T) {
+	au := NewAudioMgr()
 	device, err := au.FindDevice("NexiGo N660")
 	if err != nil {
 		t.Fatal(err)
@@ -99,7 +105,13 @@ func TestavcamFind(t *testing.T) {
 
 	t.Log(device.Name)
 	stop := make(chan int)
-	go au.RecordX(device, "TestFind_04.aiff", stop)
+	file, err := os.Create("TestRecord_04.aiff")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+
+	go au.RecordX(device, file, stop)
 	time.Sleep(20 * time.Second)
 	stop <- 1
 	// give go routine time to finalize

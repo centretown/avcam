@@ -1,6 +1,7 @@
 package avcam
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -10,13 +11,12 @@ import (
 var _ VideoSource = (*Webcam)(nil)
 
 type Webcam struct {
-	path       string
-	Device     *v4l.Device
-	DeviceInfo v4l.DeviceInfo
-	Buffer     []byte
-	Controls   map[string]v4l.ControlInfo
-	Configs    []v4l.DeviceConfig
-	isOpened   bool
+	path     string
+	device   *v4l.Device
+	Controls map[string]v4l.ControlInfo
+	isOpened bool
+	readOnly bool
+	Buffer   []byte
 }
 
 func NewWebcam(path string) *Webcam {
@@ -24,87 +24,53 @@ func NewWebcam(path string) *Webcam {
 		path:     path,
 		Buffer:   make([]byte, 0),
 		Controls: make(map[string]v4l.ControlInfo, 0),
-		Configs:  make([]v4l.DeviceConfig, 0),
 	}
 	return cam
+}
+
+func FindWebcams() (ws []*Webcam) {
+	ws = make([]*Webcam, 0)
+	list := v4l.FindDevices()
+	for _, info := range list {
+		ws = append(ws, NewWebcam(info.Path))
+	}
+	return
 }
 
 func (cam *Webcam) Path() string {
 	return cam.path
 }
+func (cam *Webcam) DeviceInfo() (info v4l.DeviceInfo, err error) {
+	if cam.device == nil {
+		err = fmt.Errorf("webcam not opened")
+		return
+	}
+	info, err = cam.device.DeviceInfo()
+	return
+}
 
-func (cam *Webcam) Open(config *VideoConfig) error {
+// if already in use becomes read only
+func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 
 	cam.isOpened = false
-	device, err := v4l.Open(cam.path)
+	cam.device, err = v4l.Open(cam.path)
 	if err != nil {
 		log.Println("Open", cam.path, err)
 		return err
 	}
+
 	cam.isOpened = true
-	cam.Device = device
-	cam.DeviceInfo, err = device.DeviceInfo()
+	deviceInfo, err := cam.device.DeviceInfo()
 	if err != nil {
 		log.Println("DeviceInfo", cam.path, err)
 		return err
 	}
 
 	log.Printf("DeviceName:'%s' DriverName: '%s'\n",
-		cam.DeviceInfo.DeviceName, cam.DeviceInfo.DriverName)
+		deviceInfo.DeviceName, deviceInfo.DriverName)
 
-	err = cam.LoadConfigs()
-	if err != nil {
-		log.Println("LoadConfigs", cam.path, err)
-		return err
-	}
-
-	controls, err := device.ListControls()
-	if err != nil {
-		log.Println("ListControls", cam.path, err)
-		return err
-	}
-
-	log.Println("Controls:")
-	for _, c := range controls {
-		cam.Controls[strings.ToLower(c.Name)] = c
-		log.Printf("CID='%v', Name='%s', Type=%v, Default=%v, Max=%v, Min=%v, Step=%v\n",
-			c.CID, c.Name, c.Type, c.Default, c.Max, c.Min, c.Step)
-	}
-
-	// cam.SetControl("brightness", 128)
-	// cam.SetControl("Pan, Absolute", 0)
-	// cam.SetControl("Tilt, Absolute", 0)
-	// cam.SetControl("Zoom, Absolute", 10)
-
-	err = cam.Configure(config)
-	if err != nil {
-		log.Println("Configure", cam.path, err)
-		return err
-	}
-
-	// device.Close()
-	// time.Sleep(time.Millisecond * 100)
-
-	// device, err = v4l.Open(cam.path)
-	// if err != nil {
-	// 	log.Println("Open", cam.path, err)
-	// 	return err
-	// }
-	// cam.Device = device
-	// cam.Device.TurnOn()
-	// cam.Close()
-
-	// device, err = v4l.Open(cam.path)
-	// if err != nil {
-	// 	log.Println("Open", cam.path, err)
-	// 	return err
-	// }
-	// cam.Device = device
-	return nil
-}
-
-func (cam *Webcam) Configure(videoConfig *VideoConfig) (err error) {
-	cam.Device.TurnOff()
+	cam.listControls()
+	cam.device.TurnOff()
 
 	preferred := &v4l.DeviceConfig{
 		Format: ToFourCC(videoConfig.Codec),
@@ -112,41 +78,49 @@ func (cam *Webcam) Configure(videoConfig *VideoConfig) (err error) {
 		FPS: v4l.Frac{N: videoConfig.FPS, D: 1},
 	}
 
-	err = cam.Device.SetConfig(*cam.findConfig(preferred))
-	if err != nil {
-		log.Println("SetConfig", cam.path, err)
+	configErr := cam.device.SetConfig(*cam.findConfig(preferred))
+	cam.readOnly = configErr != nil
+
+	var bufferInfo v4l.BufferInfo
+	if bufferInfo, err = cam.device.BufferInfo(); err != nil {
+		err = fmt.Errorf("bufferInfo %v", err)
 		return
 	}
 
-	bufferInfo, err := cam.Device.BufferInfo()
-	if err != nil {
-		log.Println("BufferInfo", cam.path, err)
-		return
-	}
-
+	log.Printf("buffer size %x\n", bufferInfo.BufferSize)
 	cam.Buffer = make([]byte, bufferInfo.BufferSize)
 
-	err = cam.Device.TurnOn()
-	if err != nil {
-		log.Println("TurnOn", cam.path, err)
-		return
+	if !cam.readOnly {
+		if err = cam.device.TurnOn(); err != nil {
+			err = fmt.Errorf("turn on %v", err)
+			return
+		}
 	}
-
 	return
 }
 
-func (cam *Webcam) GetConfig() (config v4l.DeviceConfig) {
-	config, _ = cam.Device.GetConfig()
-	return
+func (cam *Webcam) listControls() {
+	controls, err := cam.device.ListControls()
+	if err != nil {
+		log.Println("ListControls", cam.path, err)
+		return
+	}
+
+	log.Println("Controls:")
+	for _, c := range controls {
+		cam.Controls[strings.ToLower(c.Name)] = c
+		val, _ := cam.device.GetControl(c.CID)
+		log.Printf("CID='%v', Name='%s', Type=%v, Default=%v, Max=%v, Min=%v, Step=%v Value=%v\n",
+			c.CID, c.Name, c.Type, c.Default, c.Max, c.Min, c.Step, val)
+	}
 }
 
 func (cam *Webcam) GetControlInfo(key string) (info v4l.ControlInfo, err error) {
-	control, ok := cam.Controls[strings.ToLower(key)]
-	if !ok {
-		log.Println("unknown control", key)
-		return
+	var ok bool
+	if info, ok = cam.Controls[strings.ToLower(key)]; !ok {
+		err = fmt.Errorf("unknown control", key)
 	}
-	return cam.Device.ControlInfo(control.CID)
+	return
 }
 
 func (cam *Webcam) GetControlValue(key string) (value int32) {
@@ -156,7 +130,7 @@ func (cam *Webcam) GetControlValue(key string) (value int32) {
 		return
 	}
 
-	value, err := cam.Device.GetControl(control.CID)
+	value, err := cam.device.GetControl(control.CID)
 	if err != nil {
 		log.Println("GetControl", key, value, err)
 		return
@@ -172,7 +146,7 @@ func (cam *Webcam) SetControlValue(key string, value int32) {
 		return
 	}
 
-	err := cam.Device.SetControl(control.CID, value)
+	err := cam.device.SetControl(control.CID, value)
 	if err != nil {
 		log.Println("SetControl", key, value, err)
 		return
@@ -181,26 +155,13 @@ func (cam *Webcam) SetControlValue(key string, value int32) {
 	log.Println("SetControl", key, value)
 }
 
-func (cam *Webcam) LoadConfigs() (err error) {
-	cam.Configs, err = cam.Device.ListConfigs()
-	if err != nil {
-		log.Println("ListConfigs", err)
-		return err
-	}
-
-	for _, c := range cam.Configs {
-		log.Println(FourCC(c.Format), c.Width, c.Height, c.FPS.N)
-	}
-	return
-}
-
 func (cam *Webcam) IsOpened() bool {
 	return cam.isOpened
 }
 
 func (cam *Webcam) Close() {
-	cam.Device.TurnOff()
-	cam.Device.Close()
+	cam.device.TurnOff()
+	cam.device.Close()
 	cam.isOpened = false
 }
 
@@ -210,7 +171,7 @@ func (cam *Webcam) Read() (buf []byte, err error) {
 		vbuf  *v4l.Buffer
 		count int
 	)
-	vbuf, err = cam.Device.Capture()
+	vbuf, err = cam.device.Capture()
 	if err != nil {
 		log.Println("Webcam Capture", err)
 		return
@@ -231,17 +192,25 @@ func (cam *Webcam) findConfig(b *v4l.DeviceConfig) *v4l.DeviceConfig {
 		selected int
 		lowest   int = 1_000_000
 		score    int
+		configs  []v4l.DeviceConfig
+		err      error
 	)
 
-	for i := range cam.Configs {
-		score = scoreConfig(b, &cam.Configs[i])
+	configs, err = cam.device.ListConfigs()
+	if err != nil {
+		log.Println("ListConfigs", err)
+		return nil
+	}
+
+	for i := range configs {
+		score = scoreConfig(b, &configs[i])
 		if score < lowest {
 			selected = i
 			lowest = score
 		}
 	}
 	// fmt.Println("lowest", lowest, "selected", selected)
-	return &cam.Configs[selected]
+	return &configs[selected]
 }
 
 func scoreConfig(a, b *v4l.DeviceConfig) (score int) {

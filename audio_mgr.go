@@ -10,14 +10,14 @@ import (
 	"github.com/gordonklaus/portaudio"
 )
 
-type avcamMgr struct {
+type AudioMgr struct {
 	Current     *portaudio.DeviceInfo
 	Enabled     bool
 	isStreaming bool
 }
 
-func Newavcam() (au *avcamMgr) {
-	au = &avcamMgr{}
+func NewAudioMgr() (au *AudioMgr) {
+	au = &AudioMgr{}
 	err := portaudio.Initialize()
 	if err != nil {
 		log.Println("Initialize avcamMgr", err)
@@ -27,11 +27,11 @@ func Newavcam() (au *avcamMgr) {
 	return
 }
 
-func (au *avcamMgr) IsStreaming() bool {
+func (au *AudioMgr) IsStreaming() bool {
 	return au.isStreaming
 }
 
-func (au *avcamMgr) CurrentDevice() (device *portaudio.DeviceInfo, err error) {
+func (au *AudioMgr) CurrentDevice() (device *portaudio.DeviceInfo, err error) {
 	device, err = portaudio.DefaultInputDevice()
 	return
 }
@@ -44,7 +44,7 @@ const (
 	FindCase
 )
 
-func (au *avcamMgr) findDevices(search string) (result []*portaudio.DeviceInfo) {
+func (au *AudioMgr) findDevices(search string) (result []*portaudio.DeviceInfo) {
 	result = make([]*portaudio.DeviceInfo, 0)
 	hostApis, err := portaudio.HostApis()
 	if err != nil {
@@ -60,7 +60,7 @@ func (au *avcamMgr) findDevices(search string) (result []*portaudio.DeviceInfo) 
 	}
 	return
 }
-func (au *avcamMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
+func (au *AudioMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
 	list = make([]*portaudio.DeviceInfo, 0)
 	hostApis, err := portaudio.HostApis()
 	if err != nil {
@@ -72,7 +72,7 @@ func (au *avcamMgr) ListAllDevices() (list []*portaudio.DeviceInfo) {
 	return
 }
 
-func (au *avcamMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInfo) {
+func (au *AudioMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInfo) {
 	if len(searches) < 1 {
 		list = au.ListAllDevices()
 		return
@@ -89,7 +89,7 @@ func (au *avcamMgr) FindDevices(searches ...string) (list []*portaudio.DeviceInf
 	return
 }
 
-func (au *avcamMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err error) {
+func (au *AudioMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err error) {
 	search = strings.ToLower(search)
 	var (
 		hostApis []*portaudio.HostApiInfo
@@ -112,19 +112,31 @@ func (au *avcamMgr) FindDevice(search string) (device *portaudio.DeviceInfo, err
 	return
 }
 
-var _ avcamSource = (*avcamMgr)(nil)
+var _ AudioSource = (*AudioMgr)(nil)
 
-func (au *avcamMgr) IsEnabled() bool { return au.Enabled }
+func (au *AudioMgr) IsEnabled() bool { return au.Enabled }
 
-func (au *avcamMgr) Record(stop chan int) {
-	fname, _ := NextFileName(OutputBase, "aiff")
-	au.RecordX(au.Current, fname, stop)
+func (au *AudioMgr) Record(stop chan int) {
+	var (
+		file  *os.File
+		fname string
+		err   error
+	)
+	fname, _ = NextFileName(OutputBase, "aiff")
+
+	file, err = os.Create(fname)
+	if err != nil {
+		return
+	}
+
+	defer file.Close()
+	au.RecordX(au.Current, file, stop)
+
 }
 
-func (au *avcamMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop chan int) {
+func (au *AudioMgr) RecordX(device *portaudio.DeviceInfo, file *os.File, stop chan int) {
 	log.Println("RecordX")
 	var (
-		file   *os.File
 		err    error
 		stream *portaudio.Stream
 	)
@@ -138,15 +150,6 @@ func (au *avcamMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop 
 		au.isStreaming = false
 	}()
 
-	if !strings.HasSuffix(fileName, ".aiff") {
-		fileName += ".aiff"
-	}
-
-	file, err = os.Create(fileName)
-	if err != nil {
-		return
-	}
-
 	// log.Println("InitAIFF", device.DefaultSampleRate, int16(device.MaxInputChannels))
 	err = InitAIFF(file, device.DefaultSampleRate, int16(1))
 	if err != nil {
@@ -156,7 +159,6 @@ func (au *avcamMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop 
 	sampleCount := 0
 	defer func() {
 		finalizeAIFF(file, sampleCount)
-		file.Close()
 	}()
 
 	inbuf := make([]int32, 64)
@@ -216,7 +218,7 @@ func (au *avcamMgr) RecordX(device *portaudio.DeviceInfo, fileName string, stop 
 	}
 
 }
-func (au *avcamMgr) Stream(param portaudio.StreamParameters, out chan []int32, stop chan int) {
+func (au *AudioMgr) Stream(param portaudio.StreamParameters, out chan []int32, stop chan int) {
 	var (
 		stream      *portaudio.Stream
 		inbuf       = make([]int32, param.FramesPerBuffer)

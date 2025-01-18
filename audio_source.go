@@ -1,6 +1,6 @@
 package avcam
 
-type avcamSource interface {
+type AudioSource interface {
 	Record(stop chan int)
 	IsEnabled() bool
 }
