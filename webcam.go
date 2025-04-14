@@ -118,7 +118,7 @@ func (cam *Webcam) listControls() {
 func (cam *Webcam) GetControlInfo(key string) (info v4l.ControlInfo, err error) {
 	var ok bool
 	if info, ok = cam.Controls[strings.ToLower(key)]; !ok {
-		err = fmt.Errorf("unknown control", key)
+		err = fmt.Errorf("unknown control %s", key)
 	}
 	return
 }

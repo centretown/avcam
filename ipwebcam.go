@@ -14,13 +14,13 @@ type VideoRec struct {
 }
 
 type VideoRecordStatus struct {
-	Result    string   `json:"result"`
-	Enabled   bool     `json:"enabled"`
-	Vrec      VideoRec `json:"vrec"`
-	Arec      VideoRec `json:"arec"`
-	Vorec     VideoRec `json:"vorec"`
-	avcamOnly bool     `json:"avcam_only"`
-	Mode      string   `json:"mode"`
+	Result     string   `json:"result"`
+	Enabled    bool     `json:"enabled"`
+	Vrec       VideoRec `json:"vrec"`
+	Arec       VideoRec `json:"arec"`
+	Vorec      VideoRec `json:"vorec"`
+	CameraOnly bool     `json:"camera_only"`
+	Mode       string   `json:"mode"`
 }
 
 type ValueMap map[string]string
@@ -29,7 +29,7 @@ type OptionMap map[string][]string
 type CurVals struct {
 	Orientation        string `json:"orientation"`
 	Idle               string `json:"idle"`
-	avcamOnly          string `json:"avcam_only"`
+	CameraOnly         string `json:"camera_only"`
 	Overlay            string `json:"overlay"`
 	Quality            string `json:"quality"`
 	FocusHoming        string `json:"focus_homing"`
@@ -50,9 +50,9 @@ type CurVals struct {
 	MirrorFlip         string `json:"mirror_flip"`
 	Ffc                string `json:"ffc"`
 	RtspVideoFormats   string `json:"rtsp_video_formats"`
-	RtspavcamFormats   string `json:"rtsp_avcam_formats"`
+	RtspCameraFormats  string `json:"rtsp_camera_formats"`
 	VideoConnections   string `json:"video_connections"`
-	avcamConnections   string `json:"avcam_connections"`
+	CameraConnections  string `json:"camera_connections"`
 	IvideonStreaming   string `json:"ivideon_streaming"`
 	Zoom               string `json:"zoom"`
 	CropX              string `json:"crop_x"`
@@ -78,7 +78,7 @@ type CurVals struct {
 type Avail struct {
 	Orientation        []string `json:"orientation"`
 	Idle               []string `json:"idle"`
-	avcamOnly          []string `json:"avcam_only"`
+	CameraOnly         []string `json:"camera_only"`
 	Overlay            []string `json:"overlay"`
 	Quality            []string `json:"quality"`
 	FocusHoming        []string `json:"focus_homing"`
@@ -99,9 +99,9 @@ type Avail struct {
 	MirrorFlip         []string `json:"mirror_flip"`
 	Ffc                []string `json:"ffc"`
 	RtspVideoFormats   []string `json:"rtsp_video_formats"`
-	RtspavcamFormats   []string `json:"rtsp_avcam_formats"`
+	RtspCameraFormats  []string `json:"rtsp_camera_formats"`
 	VideoConnections   []string `json:"video_connections"`
-	avcamConnections   []string `json:"avcam_connections"`
+	CameraConnections  []string `json:"camera_connections"`
 	IvideonStreaming   []string `json:"ivideon_streaming"`
 	Zoom               []string `json:"zoom"`
 	CropX              []string `json:"crop_x"`
@@ -135,21 +135,21 @@ type DeviceInfo struct {
 }
 
 type IPWebcamVariant struct {
-	VideoConnections int                `json:"video_connections"`
-	avcamConnections int                `json:"avcam_connections"`
-	VideoStatus      *VideoRecordStatus `json:"video_status"`
-	CurVals          *CurVals           `json:"curvals"`
-	Avail            *Avail             `json:"avail"`
-	DeviceInfo       *DeviceInfo        `json:"deviceInfo"`
+	VideoConnections  int                `json:"video_connections"`
+	CameraConnections int                `json:"camera_connections"`
+	VideoStatus       *VideoRecordStatus `json:"video_status"`
+	CurVals           *CurVals           `json:"curvals"`
+	Avail             *Avail             `json:"avail"`
+	DeviceInfo        *DeviceInfo        `json:"deviceInfo"`
 }
 
 type IPWebcamStatus struct {
-	VideoConnections int                `json:"video_connections"`
-	avcamConnections int                `json:"avcam_connections"`
-	VideoStatus      *VideoRecordStatus `json:"video_status"`
-	Options          ValueMap           `json:"curvals"`
-	OptionMap        OptionMap          `json:"avail"`
-	DeviceInfo       *DeviceInfo        `json:"deviceInfo"`
+	VideoConnections  int                `json:"video_connections"`
+	CameraConnections int                `json:"camera_connections"`
+	VideoStatus       *VideoRecordStatus `json:"video_status"`
+	Options           ValueMap           `json:"curvals"`
+	OptionMap         OptionMap          `json:"avail"`
+	DeviceInfo        *DeviceInfo        `json:"deviceInfo"`
 }
 
 type IPCWConfig struct {
@@ -209,10 +209,10 @@ func LoadIpWebCamStatus(url string) (ipcwStat *IPWebcamStatus, err error) {
 }
 
 type IpWebcam struct {
-	VideoConnections int
-	avcamConnections int
-	DeviceInfo       *DeviceInfo
-	Properties       map[string]*IpWebcamOptions
+	VideoConnections  int
+	CameraConnections int
+	DeviceInfo        *DeviceInfo
+	Properties        map[string]*IpWebcamOptions
 }
 
 func NewIpWebCam() *IpWebcam {
@@ -245,7 +245,7 @@ func (ipwc *IpWebcam) Load(path string, configs map[string]*IPCWConfig) (err err
 	}
 
 	ipwc.VideoConnections = ipcwStat.VideoConnections
-	ipwc.avcamConnections = ipcwStat.avcamConnections
+	ipwc.CameraConnections = ipcwStat.CameraConnections
 	ipwc.DeviceInfo = ipcwStat.DeviceInfo
 	ipwc.Properties = make(map[string]*IpWebcamOptions)
 
