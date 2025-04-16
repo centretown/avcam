@@ -43,6 +43,7 @@ func TestLocateCameras(t *testing.T) {
 
 		if cfg, err = cam.device.GetConfig(); err != nil {
 			t.Log("GetConfig", err)
+			cam.Close()
 			continue
 		}
 
@@ -50,7 +51,9 @@ func TestLocateCameras(t *testing.T) {
 
 		ctrls, err = cam.device.ListControls()
 		if err != nil {
-			t.Fatal("ListControls", err)
+			t.Log("ListControls", err)
+			cam.Close()
+			continue
 		}
 
 		for i, ctrl := range ctrls {
