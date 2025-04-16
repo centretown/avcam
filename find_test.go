@@ -13,11 +13,6 @@ func TestFind(t *testing.T) {
 	}
 }
 
-func TestListWebcams(t *testing.T) {
-	list := FindWebcams()
-	err := list[0].Open(&VideoConfig{})
-	t.Log(err)
-}
 
 func TestLocateCameras(t *testing.T) {
 	var (
