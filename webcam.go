@@ -69,7 +69,13 @@ func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 	log.Printf("DeviceName:'%s' DriverName: '%s'\n",
 		deviceInfo.DeviceName, deviceInfo.DriverName)
 
-	cam.listControls()
+	err = cam.listControls()
+	if err != nil {
+		cam.Close()
+		cam.isOpened = false
+		return err
+	}
+
 	cam.device.TurnOff()
 
 	preferred := &v4l.DeviceConfig{
@@ -99,11 +105,11 @@ func (cam *Webcam) Open(videoConfig *VideoConfig) (err error) {
 	return
 }
 
-func (cam *Webcam) listControls() {
+func (cam *Webcam) listControls() error {
 	controls, err := cam.device.ListControls()
 	if err != nil {
 		log.Println("ListControls", cam.path, err)
-		return
+		return err
 	}
 
 	log.Println("Controls:")
@@ -113,6 +119,7 @@ func (cam *Webcam) listControls() {
 		log.Printf("CID='%v', Name='%s', Type=%v, Default=%v, Max=%v, Min=%v, Step=%v Value=%v\n",
 			c.CID, c.Name, c.Type, c.Default, c.Max, c.Min, c.Step, val)
 	}
+	return err
 }
 
 func (cam *Webcam) GetControlInfo(key string) (info v4l.ControlInfo, err error) {
